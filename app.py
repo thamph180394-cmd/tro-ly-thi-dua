@@ -14,12 +14,19 @@ from database import (
     an_lop,
     kich_hoat_lop,
     xoa_lop,
-    cap_nhat_thong_tin_lop
+    cap_nhat_thong_tin_lop,
+
+    # PHẦN MỚI: TUẦN - THÁNG
+    luu_thang_cho_tuan,
+    lay_thang_cua_tuan,
+    lay_danh_sach_tuan_thang,
+    lay_cac_tuan_chua_co_thang
 )
 
 from ai_assistant import tao_nhan_xet_thi_dua
 from export_dashboard import tao_anh_dashboard
 from export_word import tao_bao_cao_word_toan_truong
+from export_excel import tao_excel_so_ket, tao_excel_tong_ket
 
 
 # =========================================================
@@ -72,8 +79,15 @@ def tao_bang_xep_hang(du_lieu):
         drop=True
     )
 
-    # Đồng điểm = đồng hạng
-    # Ví dụ: 1, 1, 3
+    # =====================================================
+    # ĐỒNG ĐIỂM = ĐỒNG HẠNG
+    #
+    # Ví dụ:
+    # 275 -> Hạng 1
+    # 275 -> Hạng 1
+    # 270 -> Hạng 3
+    # =====================================================
+
     bang["Hạng"] = (
         bang["Tổng điểm"]
         .rank(
@@ -331,12 +345,190 @@ with cot_tuan:
 
 
 # =========================================================
-# ĐỒNG BỘ LỚP CŨ
+# ĐỒNG BỘ DANH SÁCH LỚP CŨ
 # =========================================================
 
 dong_bo_danh_sach_lop_cu(
     nam_hoc
 )
+
+
+# =========================================================
+# PHẦN MỚI
+# QUẢN LÝ TUẦN - THÁNG
+# =========================================================
+
+with st.expander(
+    "📅 THÁNG CỦA TUẦN",
+    expanded=False
+):
+
+    st.info(
+        "Mỗi tuần cần được gán vào đúng tháng để cuối học kỳ "
+        "và cuối năm có thể xuất Sơ kết thi đua và Tổng kết thi đua."
+    )
+
+    thang_da_luu = lay_thang_cua_tuan(
+        nam_hoc,
+        tuan
+    )
+
+    cac_thang_nam_hoc = [
+        9,
+        10,
+        11,
+        12,
+        1,
+        2,
+        3,
+        4,
+        5
+    ]
+
+    if thang_da_luu in cac_thang_nam_hoc:
+
+        chi_so_thang = (
+            cac_thang_nam_hoc.index(
+                thang_da_luu
+            )
+        )
+
+    else:
+
+        chi_so_thang = 0
+
+    c1, c2 = st.columns(
+        [2, 1]
+    )
+
+    with c1:
+
+        thang_chon = st.selectbox(
+            f"Tuần {tuan} thuộc tháng",
+            cac_thang_nam_hoc,
+            index=chi_so_thang,
+            format_func=lambda x: f"Tháng {x}",
+            key=f"thang_tuan_{nam_hoc}_{tuan}"
+        )
+
+    with c2:
+
+        st.write("")
+
+        st.write("")
+
+        if st.button(
+            "💾 LƯU THÁNG CHO TUẦN",
+            type="primary",
+            key=f"luu_thang_{nam_hoc}_{tuan}"
+        ):
+
+            thanh_cong, thong_bao = (
+                luu_thang_cho_tuan(
+                    nam_hoc,
+                    tuan,
+                    thang_chon
+                )
+            )
+
+            if thanh_cong:
+
+                st.success(
+                    thong_bao
+                )
+
+                st.rerun()
+
+            else:
+
+                st.error(
+                    thong_bao
+                )
+
+
+    # =====================================================
+    # HIỂN THỊ TRẠNG THÁI TUẦN HIỆN TẠI
+    # =====================================================
+
+    if thang_da_luu is None:
+
+        st.warning(
+            f"⚠️ Tuần {tuan} chưa được gán tháng."
+        )
+
+    else:
+
+        st.success(
+            f"✅ Tuần {tuan} hiện đang thuộc Tháng {thang_da_luu}."
+        )
+
+
+    # =====================================================
+    # DANH SÁCH TUẦN - THÁNG ĐÃ CẤU HÌNH
+    # =====================================================
+
+    ds_tuan_thang = lay_danh_sach_tuan_thang(
+        nam_hoc
+    )
+
+    if ds_tuan_thang:
+
+        st.divider()
+
+        st.markdown(
+            "### 📋 DANH SÁCH TUẦN - THÁNG ĐÃ LƯU"
+        )
+
+        df_tuan_thang = pd.DataFrame(
+            ds_tuan_thang,
+            columns=[
+                "Tuần",
+                "Tháng"
+            ]
+        )
+
+        df_tuan_thang[
+            "Tháng"
+        ] = df_tuan_thang[
+            "Tháng"
+        ].apply(
+            lambda x: f"Tháng {x}"
+        )
+
+        st.dataframe(
+            df_tuan_thang,
+            width="stretch",
+            hide_index=True
+        )
+
+
+    # =====================================================
+    # KIỂM TRA TUẦN CÓ ĐIỂM NHƯNG CHƯA GÁN THÁNG
+    # =====================================================
+
+    cac_tuan_chua_co_thang = (
+        lay_cac_tuan_chua_co_thang(
+            nam_hoc
+        )
+    )
+
+    if cac_tuan_chua_co_thang:
+
+        st.warning(
+            "Các tuần đã có dữ liệu điểm nhưng chưa gán tháng: "
+            + ", ".join(
+                [
+                    f"Tuần {x}"
+                    for x in cac_tuan_chua_co_thang
+                ]
+            )
+        )
+
+    else:
+
+        st.caption(
+            "✅ Các tuần đang có dữ liệu điểm đều đã được gán tháng."
+        )
 
 
 # =========================================================
@@ -352,6 +544,10 @@ with st.expander(
         "Bạn có thể thêm lớp, sửa tên lớp, sửa khối, "
         "ẩn lớp hoặc kích hoạt lại mà không cần sửa chương trình."
     )
+
+    # =====================================================
+    # THÊM LỚP MỚI
+    # =====================================================
 
     st.markdown(
         "### ➕ THÊM LỚP MỚI"
@@ -415,6 +611,10 @@ with st.expander(
 
             st.rerun()
 
+
+    # =====================================================
+    # DANH SÁCH LỚP HIỆN TẠI
+    # =====================================================
 
     tat_ca_lop = lay_danh_sach_lop(
         nam_hoc,
@@ -613,7 +813,7 @@ with st.expander(
 
 
         # =================================================
-        # TRẠNG THÁI LỚP
+        # QUẢN LÝ TRẠNG THÁI LỚP
         # =================================================
 
         st.divider()
@@ -703,7 +903,7 @@ st.divider()
 
 
 # =========================================================
-# LẤY DỮ LIỆU
+# LẤY DỮ LIỆU TUẦN
 # =========================================================
 
 du_lieu_hien_tai = lay_diem_theo_tuan(
@@ -714,6 +914,7 @@ du_lieu_hien_tai = lay_diem_theo_tuan(
 bang = tao_bang_xep_hang(
     du_lieu_hien_tai
 )
+
 
 if tuan > 1:
 
@@ -738,6 +939,10 @@ else:
 # =========================================================
 
 if not bang.empty:
+
+    # =====================================================
+    # KHỐI
+    # =====================================================
 
     bang["Khối"] = bang[
         "Lớp"
@@ -1087,8 +1292,6 @@ if not bang.empty:
         unsafe_allow_html=True
     )
 
-    # Lấy tất cả lớp có HẠNG <= 5
-    # Nếu hạng 5 có đồng hạng thì vẫn hiển thị đầy đủ.
     top5 = bang[
         bang["Hạng"] <= 5
     ].copy()
@@ -1498,16 +1701,13 @@ if not bang.empty:
 
         ten_truong = st.text_input(
             "Tên trường",
-            value=(
-                "TRƯỜNG THCS "
-                "................................"
-            ),
+            value="TRƯỜNG TH&THCS AN LINH",
             key="word_ten_truong"
         )
 
         dia_danh = st.text_input(
             "Địa danh",
-            value="................",
+            value="An Linh",
             key="word_dia_danh"
         )
 
@@ -1828,6 +2028,245 @@ with st.expander(
 
 
 # =========================================================
+# SƠ KẾT / TỔNG KẾT THI ĐUA
+# =========================================================
+
+st.divider()
+
+with st.expander(
+    "📘 SƠ KẾT - 📕 TỔNG KẾT THI ĐUA",
+    expanded=False
+):
+
+    st.info(
+        "📘 Sơ kết: tổng hợp kết quả thi đua từ Tháng 9 đến hết Tháng 12.\n\n"
+        "📕 Tổng kết: tổng hợp kết quả từ đầu năm học đến Tuần đang chọn."
+    )
+
+    cac_tuan_chua_co_thang = (
+        lay_cac_tuan_chua_co_thang(
+            nam_hoc
+        )
+    )
+
+    if cac_tuan_chua_co_thang:
+
+        st.warning(
+            "⚠️ Còn các tuần có dữ liệu điểm nhưng chưa gán tháng: "
+            + ", ".join(
+                [
+                    f"Tuần {x}"
+                    for x in cac_tuan_chua_co_thang
+                ]
+            )
+            + ". Hãy gán tháng đầy đủ trước khi xuất báo cáo."
+        )
+
+    else:
+
+        st.success(
+            "✅ Các tuần có dữ liệu điểm đã được gán tháng. "
+            "Có thể tạo báo cáo Sơ kết hoặc Tổng kết."
+        )
+
+    so_ket_col, tong_ket_col = st.columns(2)
+
+    # =====================================================
+    # SƠ KẾT THI ĐUA
+    # =====================================================
+
+    with so_ket_col:
+
+        st.markdown(
+            "### 📘 SƠ KẾT THI ĐUA"
+        )
+
+        st.caption(
+            "Tổng hợp Tháng 9 → Tháng 12, "
+            "có xếp hạng toàn trường, tổng hợp theo tháng "
+            "và chi tiết từng tuần."
+        )
+
+        nut_so_ket_bi_khoa = (
+            len(cac_tuan_chua_co_thang) > 0
+        )
+
+        if st.button(
+            "📘 TẠO EXCEL SƠ KẾT",
+            type="primary",
+            use_container_width=True,
+            disabled=nut_so_ket_bi_khoa,
+            key="tao_excel_so_ket"
+        ):
+
+            try:
+
+                duong_dan_so_ket = (
+                    tao_excel_so_ket(
+                        nam_hoc
+                    )
+                )
+
+                if (
+                    duong_dan_so_ket
+                    and os.path.exists(
+                        duong_dan_so_ket
+                    )
+                ):
+
+                    with open(
+                        duong_dan_so_ket,
+                        "rb"
+                    ) as tep:
+
+                        st.session_state[
+                            "excel_so_ket_bytes"
+                        ] = tep.read()
+
+                    st.session_state[
+                        "excel_so_ket_ten"
+                    ] = os.path.basename(
+                        duong_dan_so_ket
+                    )
+
+                    st.success(
+                        "✅ Đã tạo Excel Sơ kết thi đua thành công."
+                    )
+
+                else:
+
+                    st.error(
+                        "Không tạo được file Excel Sơ kết."
+                    )
+
+            except Exception as loi:
+
+                st.error(
+                    f"Lỗi khi tạo Excel Sơ kết: {loi}"
+                )
+
+        if (
+            "excel_so_ket_bytes"
+            in st.session_state
+        ):
+
+            st.download_button(
+                "⬇️ TẢI EXCEL SƠ KẾT",
+                data=st.session_state[
+                    "excel_so_ket_bytes"
+                ],
+                file_name=st.session_state.get(
+                    "excel_so_ket_ten",
+                    "so_ket_thi_dua.xlsx"
+                ),
+                mime=(
+                    "application/vnd.openxmlformats-officedocument."
+                    "spreadsheetml.sheet"
+                ),
+                type="primary",
+                use_container_width=True,
+                key="tai_excel_so_ket"
+            )
+
+    # =====================================================
+    # TỔNG KẾT THI ĐUA
+    # =====================================================
+
+    with tong_ket_col:
+
+        st.markdown(
+            "### 📕 TỔNG KẾT THI ĐUA"
+        )
+
+        st.caption(
+            f"Tổng hợp từ đầu năm học đến Tuần {tuan} đang chọn, "
+            "không lấy các tuần chưa diễn ra."
+        )
+
+        nut_tong_ket_bi_khoa = (
+            len(cac_tuan_chua_co_thang) > 0
+        )
+
+        if st.button(
+            f"📕 TẠO EXCEL TỔNG KẾT ĐẾN TUẦN {tuan}",
+            type="primary",
+            use_container_width=True,
+            disabled=nut_tong_ket_bi_khoa,
+            key="tao_excel_tong_ket"
+        ):
+
+            try:
+
+                duong_dan_tong_ket = (
+                    tao_excel_tong_ket(
+                        nam_hoc,
+                        tuan
+                    )
+                )
+
+                if (
+                    duong_dan_tong_ket
+                    and os.path.exists(
+                        duong_dan_tong_ket
+                    )
+                ):
+
+                    with open(
+                        duong_dan_tong_ket,
+                        "rb"
+                    ) as tep:
+
+                        st.session_state[
+                            "excel_tong_ket_bytes"
+                        ] = tep.read()
+
+                    st.session_state[
+                        "excel_tong_ket_ten"
+                    ] = os.path.basename(
+                        duong_dan_tong_ket
+                    )
+
+                    st.success(
+                        "✅ Đã tạo Excel Tổng kết thi đua thành công."
+                    )
+
+                else:
+
+                    st.error(
+                        "Không tạo được file Excel Tổng kết."
+                    )
+
+            except Exception as loi:
+
+                st.error(
+                    f"Lỗi khi tạo Excel Tổng kết: {loi}"
+                )
+
+        if (
+            "excel_tong_ket_bytes"
+            in st.session_state
+        ):
+
+            st.download_button(
+                "⬇️ TẢI EXCEL TỔNG KẾT",
+                data=st.session_state[
+                    "excel_tong_ket_bytes"
+                ],
+                file_name=st.session_state.get(
+                    "excel_tong_ket_ten",
+                    f"tong_ket_thi_dua_den_tuan_{tuan}.xlsx"
+                ),
+                mime=(
+                    "application/vnd.openxmlformats-officedocument."
+                    "spreadsheetml.sheet"
+                ),
+                type="primary",
+                use_container_width=True,
+                key="tai_excel_tong_ket"
+            )
+
+
+# =========================================================
 # CHÂN TRANG
 # =========================================================
 
@@ -1836,7 +2275,8 @@ st.divider()
 st.caption(
     "Trợ lý AI xét thi đua • "
     "Quản lý lớp linh hoạt • "
-    "Sửa tên lớp và khối • "
+    "Quản lý Tuần - Tháng • "
     "Xếp hạng đồng hạng • "
-    "Top 5 • Xuất ảnh • Xuất Word."
+    "Top 5 • Xuất ảnh • Xuất Word • "
+    "Sơ kết Excel • Tổng kết Excel."
 )
