@@ -20,7 +20,8 @@ from database import (
     luu_thang_cho_tuan,
     lay_thang_cua_tuan,
     lay_danh_sach_tuan_thang,
-    lay_cac_tuan_chua_co_thang
+    lay_cac_tuan_chua_co_thang,
+    xoa_du_lieu_tuan
 )
 
 from ai_assistant import tao_nhan_xet_thi_dua
@@ -529,6 +530,58 @@ with st.expander(
         st.caption(
             "✅ Các tuần đang có dữ liệu điểm đều đã được gán tháng."
         )
+
+
+# =========================================================
+# XÓA TOÀN BỘ DỮ LIỆU CỦA MỘT TUẦN
+# =========================================================
+
+with st.expander("🗑️ XÓA DỮ LIỆU MỘT TUẦN", expanded=False):
+    st.warning(
+        "Chức năng này sẽ xóa toàn bộ điểm thi đua của tất cả các lớp "
+        "trong tuần được chọn và xóa luôn gán Tuần - Tháng. "
+        "Danh sách lớp và dữ liệu các tuần khác vẫn được giữ nguyên."
+    )
+
+    tuan_can_xoa = st.number_input(
+        "Chọn tuần cần xóa", min_value=1, max_value=52,
+        value=int(tuan), step=1, key="tuan_can_xoa"
+    )
+
+    du_lieu_tuan_can_xoa = lay_diem_theo_tuan(nam_hoc, int(tuan_can_xoa))
+    thang_tuan_can_xoa = lay_thang_cua_tuan(nam_hoc, int(tuan_can_xoa))
+
+    if du_lieu_tuan_can_xoa:
+        st.info(f"Tuần {int(tuan_can_xoa)} hiện có {len(du_lieu_tuan_can_xoa)} lớp có dữ liệu điểm.")
+    else:
+        st.info(f"Tuần {int(tuan_can_xoa)} hiện không có dữ liệu điểm.")
+
+    if thang_tuan_can_xoa is not None:
+        st.caption(f"Tuần {int(tuan_can_xoa)} đang được gán vào Tháng {thang_tuan_can_xoa}.")
+
+    xac_nhan_xoa_tuan = st.checkbox(
+        f"Tôi xác nhận muốn xóa toàn bộ dữ liệu Tuần {int(tuan_can_xoa)}",
+        key="xac_nhan_xoa_tuan"
+    )
+
+    if st.button(
+        f"🗑️ XÓA TOÀN BỘ DỮ LIỆU TUẦN {int(tuan_can_xoa)}",
+        type="primary", use_container_width=True,
+        disabled=not xac_nhan_xoa_tuan, key="nut_xoa_du_lieu_tuan"
+    ):
+        thanh_cong, thong_bao = xoa_du_lieu_tuan(nam_hoc, int(tuan_can_xoa))
+
+        if thanh_cong:
+            st.success(thong_bao)
+            for khoa in [
+                "excel_so_ket_bytes", "excel_so_ket_ten",
+                "excel_tong_ket_bytes", "excel_tong_ket_ten",
+                "anh_dashboard", "duong_dan_word_toan_truong"
+            ]:
+                st.session_state.pop(khoa, None)
+            st.rerun()
+        else:
+            st.error(thong_bao)
 
 
 # =========================================================

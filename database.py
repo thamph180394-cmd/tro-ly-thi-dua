@@ -1270,6 +1270,61 @@ def tong_hop_diem_theo_thang(
 
 
 # =========================================================
+# XÓA TOÀN BỘ DỮ LIỆU CỦA MỘT TUẦN
+# =========================================================
+
+def xoa_du_lieu_tuan(
+    nam_hoc,
+    tuan
+):
+
+    conn = ket_noi()
+    cursor = conn.cursor()
+
+    try:
+
+        # Xóa toàn bộ điểm của tất cả các lớp trong tuần
+        cursor.execute("""
+            DELETE FROM diem_thi_dua
+
+            WHERE nam_hoc = ?
+              AND tuan = ?
+        """, (
+            nam_hoc,
+            int(tuan)
+        ))
+
+        # Xóa luôn gán Tuần - Tháng của tuần đó
+        cursor.execute("""
+            DELETE FROM lich_tuan_thang
+
+            WHERE nam_hoc = ?
+              AND tuan = ?
+        """, (
+            nam_hoc,
+            int(tuan)
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return (
+            True,
+            f"Đã xóa toàn bộ dữ liệu Tuần {tuan}."
+        )
+
+    except Exception as loi:
+
+        conn.rollback()
+        conn.close()
+
+        return (
+            False,
+            f"Không thể xóa dữ liệu Tuần {tuan}: {loi}"
+        )
+
+
+# =========================================================
 # CHẠY TRỰC TIẾP DATABASE.PY
 # =========================================================
 
@@ -1287,4 +1342,8 @@ if __name__ == "__main__":
 
     print(
         "Đã sẵn sàng dữ liệu cho Sơ kết và Tổng kết thi đua."
+    )
+
+    print(
+        "Đã sẵn sàng chức năng xóa dữ liệu theo tuần."
     )
