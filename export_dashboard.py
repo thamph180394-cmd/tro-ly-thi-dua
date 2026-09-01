@@ -15,37 +15,52 @@ BASE_H = 715
 
 THU_MUC_GOC = Path(__file__).resolve().parent
 
-TEMPLATE_PATH = THU_MUC_GOC / "assets" / "dashboard_template.png"
+# Tự động tìm thư mục assets hoặc tài sản
+ASSETS_DIR = THU_MUC_GOC / "assets"
+if not ASSETS_DIR.exists():
+    ASSETS_DIR = THU_MUC_GOC / "tài sản"
+
+TEMPLATE_PATH = ASSETS_DIR / "dashboard_template.png"
 
 
 # =========================================================
-# FONT
+# FONT (Tự động nạp font trong dự án hoặc hệ thống)
 # =========================================================
 
 
 def tim_font(bold=False):
     if bold:
         ds_font = [
+            # 1. Ưu tiên font nằm ngay trong project
+            ASSETS_DIR / "Roboto-Bold.ttf",
+            THU_MUC_GOC / "Roboto-Bold.ttf",
+            ASSETS_DIR / "arialbd.ttf",
+            # 2. Font hệ thống Linux (Streamlit Cloud)
+            "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            # 3. Font Windows
             r"C:\Windows\Fonts\arialbd.ttf",
             r"C:\Windows\Fonts\calibrib.ttf",
-            r"C:\Windows\Fonts\timesbd.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-            "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
         ]
     else:
         ds_font = [
+            # 1. Ưu tiên font nằm ngay trong project
+            ASSETS_DIR / "Roboto-Regular.ttf",
+            THU_MUC_GOC / "Roboto-Regular.ttf",
+            ASSETS_DIR / "arial.ttf",
+            # 2. Font hệ thống Linux (Streamlit Cloud)
+            "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            # 3. Font Windows
             r"C:\Windows\Fonts\arial.ttf",
             r"C:\Windows\Fonts\calibri.ttf",
-            r"C:\Windows\Fonts\times.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
         ]
 
     for duong_dan in ds_font:
         if Path(duong_dan).exists():
-            return duong_dan
+            return str(duong_dan)
 
     return None
 
@@ -58,7 +73,10 @@ def font(size, bold=False):
     duong_dan = FONT_DAM if bold else FONT_THUONG
 
     if duong_dan:
-        return ImageFont.truetype(duong_dan, size)
+        try:
+            return ImageFont.truetype(duong_dan, size)
+        except Exception:
+            pass
 
     return ImageFont.load_default()
 
@@ -209,9 +227,9 @@ def xoa_noi_dung_dong(img):
     draw.rectangle((638, 89, 760, 108), fill="#D7222D")
 
     # -----------------------------------------------------
-    # TIÊU ĐỀ BẢNG XẾP HẠNG (Che kín toàn bộ chữ mẫu cũ)
+    # TIÊU ĐỀ BẢNG XẾP HẠNG (Che chính xác thanh dải băng)
     # -----------------------------------------------------
-    draw.rectangle((95, 205, 430, 246), fill="#1260C8")
+    draw.rectangle((100, 222, 380, 246), fill="#0757B8")
 
     # -----------------------------------------------------
     # TUẦN GÓC PHẢI
@@ -262,21 +280,21 @@ def ve_thong_tin_dau(img, nam_hoc, tuan, df):
     draw = ImageDraw.Draw(img)
 
     tong_lop = len(df)
-    diem_tb = df["Tổng điểm"].mean()
+    diem_tb = df["Tổng điểm"].mean() if not df.empty else 0
 
     # -----------------------------------------------------
     # LỚP DẪN ĐẦU
     # -----------------------------------------------------
     dau = df[df["Hạng"] == 1]
-    lop_dau = ghep_lop(dau["Lớp"].tolist())
-    diem_dau = dau.iloc[0]["Tổng điểm"]
+    lop_dau = ghep_lop(dau["Lớp"].tolist()) if not dau.empty else "—"
+    diem_dau = dau.iloc[0]["Tổng điểm"] if not dau.empty else 0
 
     # -----------------------------------------------------
     # CUỐI BẢNG
     # -----------------------------------------------------
-    diem_cuoi = df["Tổng điểm"].min()
+    diem_cuoi = df["Tổng điểm"].min() if not df.empty else 0
     cuoi = df[df["Tổng điểm"] == diem_cuoi]
-    lop_cuoi = ghep_lop(cuoi["Lớp"].tolist())
+    lop_cuoi = ghep_lop(cuoi["Lớp"].tolist()) if not cuoi.empty else "—"
 
     # -----------------------------------------------------
     # TIẾN BỘ + ỔN ĐỊNH
@@ -371,11 +389,12 @@ def ve_bang_xep_hang(img, df, tuan):
     # -----------------------------------------------------
     # VẼ TIÊU ĐỀ BANNER ĐỘNG THEO SỐ TUẦN
     # -----------------------------------------------------
-    draw.text(
-        (105, 216),
+    text_center(
+        draw,
+        (230, 234),
         f"BẢNG XẾP HẠNG TOÀN TRƯỜNG - TUẦN {tuan}",
-        font=font(13, True),
-        fill="#FFFFFF",
+        font(12, True),
+        "#FFFFFF",
     )
 
     # =====================================================
@@ -531,6 +550,9 @@ def ve_top5(img, df):
 
 def ve_bieu_do(img, df):
     draw = ImageDraw.Draw(img)
+
+    if df.empty:
+        return
 
     chart = (
         df.sort_values("Tổng điểm", ascending=False)
