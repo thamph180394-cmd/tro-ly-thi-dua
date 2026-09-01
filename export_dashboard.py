@@ -2,7 +2,6 @@ from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 import re
-
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
 
@@ -15,7 +14,6 @@ BASE_H = 715
 
 THU_MUC_GOC = Path(__file__).resolve().parent
 
-# Tìm thư mục tài sản hoặc assets
 ASSETS_DIR = THU_MUC_GOC / "tài sản"
 if not ASSETS_DIR.exists():
     ASSETS_DIR = THU_MUC_GOC / "assets"
@@ -26,33 +24,38 @@ if not TEMPLATE_PATH.exists():
 
 
 # =========================================================
-# NẠP FONT TỪ FILE ARIAL.TTF TRÊN GITHUB
+# LOAD FONT TIẾNG VIỆT CHUẨN
 # =========================================================
 
-
-def font(size, bold=False):
-    ds_font = [
+def tim_font():
+    ds = [
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
         THU_MUC_GOC / "arial.ttf",
         ASSETS_DIR / "arial.ttf",
-        THU_MUC_GOC / "font_tieng_viet.ttf",
-        ASSETS_DIR / "font_tieng_viet.ttf",
-        r"C:\Windows\Fonts\arial.ttf",
+        r"C:\Windows\Fonts\arial.ttf"
     ]
-
-    for p in ds_font:
+    for p in ds:
         if Path(p).exists():
-            try:
-                return ImageFont.truetype(str(p), size)
-            except Exception:
-                pass
+            return str(p)
+    return None
 
+FONT_PATH = tim_font()
+
+def font(size, bold=False):
+    if FONT_PATH:
+        try:
+            return ImageFont.truetype(FONT_PATH, size)
+        except Exception:
+            pass
     return ImageFont.load_default()
 
 
 # =========================================================
-# HÀM HỖ TRỢ
+# HÀM HỖ TRỢ DỮ LIỆU
 # =========================================================
-
 
 def hien_thi_so(gia_tri):
     try:
@@ -78,7 +81,7 @@ def chuan_hoa_bang(bang):
         "Vệ sinh",
         "Điểm cộng",
         "Điểm trừ",
-        "Tổng điểm",
+        "Tổng điểm"
     ]
 
     for cot in cac_cot_so:
@@ -86,11 +89,12 @@ def chuan_hoa_bang(bang):
             df[cot] = pd.to_numeric(df[cot], errors="coerce").fillna(0)
 
     df = df.sort_values(
-        ["Tổng điểm", "Lớp"], ascending=[False, True], kind="stable"
+        ["Tổng điểm", "Lớp"],
+        ascending=[False, True],
+        kind="stable"
     ).reset_index(drop=True)
 
     df["Hạng"] = df["Tổng điểm"].rank(method="min", ascending=False).astype(int)
-
     return df
 
 
@@ -150,7 +154,6 @@ def tim_on_dinh(df):
 # HÀM VẼ CHỮ
 # =========================================================
 
-
 def text_center(draw, xy, text, font_obj, fill):
     x, y = xy
     bbox = draw.textbbox((0, 0), str(text), font=font_obj)
@@ -167,9 +170,8 @@ def text_right(draw, xy, text, font_obj, fill):
 
 
 # =========================================================
-# XÓA DỮ LIỆU CŨ TRÊN MẪU
+# XÓA CÁC VÙNG DỮ LIỆU CŨ TRÊN MẪU
 # =========================================================
-
 
 def xoa_noi_dung_dong(img):
     draw = ImageDraw.Draw(img)
@@ -178,10 +180,10 @@ def xoa_noi_dung_dong(img):
     draw.rectangle((438, 89, 635, 108), fill="#11479B")
     draw.rectangle((638, 89, 760, 108), fill="#D7222D")
 
-    # 2. Xóa chữ trên dải banner bảng xếp hạng (che vừa khít)
+    # 2. Xóa chữ trên dải banner bảng xếp hạng
     draw.rectangle((95, 222, 380, 246), fill="#0757B8")
 
-    # 3. Ô Lịch tuần góc phải
+    # 3. Lịch tuần góc phải
     draw.rectangle((982, 50, 1048, 84), fill="#FFFFFF")
     draw.rectangle((956, 94, 1076, 111), fill="#174997")
 
@@ -211,9 +213,8 @@ def xoa_noi_dung_dong(img):
 
 
 # =========================================================
-# VẼ NỘI DUNG MỚI
+# VẼ THÔNG TIN
 # =========================================================
-
 
 def ve_thong_tin_dau(img, nam_hoc, tuan, df):
     draw = ImageDraw.Draw(img)
@@ -232,86 +233,48 @@ def ve_thong_tin_dau(img, nam_hoc, tuan, df):
     lop_tien_bo, chi_tiet_tien_bo = tim_tien_bo(df)
     lop_on_dinh, chi_tiet_on_dinh = tim_on_dinh(df)
 
-    text_center(
-        draw, (536, 98), f"NĂM HỌC {nam_hoc}", font(14, True), "#FFFFFF"
-    )
+    text_center(draw, (536, 98), f"NĂM HỌC {nam_hoc}", font(14, True), "#FFFFFF")
     text_center(draw, (699, 98), f"TUẦN {tuan}", font(14, True), "#FFFFFF")
 
     text_center(draw, (1015, 66), str(tuan), font(28, True), "#D5222E")
     ngay = datetime.now().strftime("%d/%m/%Y")
-    text_center(
-        draw, (1015, 102), f"Ngày cập nhật: {ngay}", font(9, False), "#FFFFFF"
-    )
+    text_center(draw, (1015, 102), f"Ngày cập nhật: {ngay}", font(9, False), "#FFFFFF")
 
-    # 1. Tổng số lớp
-    text_center(
-        draw, (157, 166), hien_thi_so(tong_lop), font(32, True), "#174EAA"
-    )
+    text_center(draw, (157, 166), hien_thi_so(tong_lop), font(32, True), "#174EAA")
     text_center(draw, (157, 195), "LỚP", font(12, True), "#174EAA")
 
-    # 2. Điểm trung bình
-    text_center(
-        draw, (320, 166), hien_thi_so(diem_tb), font(26, True), "#258A39"
-    )
+    text_center(draw, (320, 166), hien_thi_so(diem_tb), font(26, True), "#258A39")
     text_center(draw, (320, 195), "điểm", font(11, False), "#333333")
 
-    # 3. Lớp dẫn đầu
     text_center(draw, (498, 164), lop_dau, font(22, True), "#C98200")
-    text_center(
-        draw,
-        (498, 194),
-        f"{hien_thi_so(diem_dau)} điểm",
-        font(11, False),
-        "#333333",
-    )
+    text_center(draw, (498, 194), f"{hien_thi_so(diem_dau)} điểm", font(11, False), "#333333")
 
-    # 4. Lớp tiến bộ
     text_center(draw, (666, 164), lop_tien_bo, font(23, True), "#5C2897")
     if chi_tiet_tien_bo:
-        text_center(
-            draw, (666, 194), chi_tiet_tien_bo, font(11, True), "#258A39"
-        )
+        text_center(draw, (666, 194), chi_tiet_tien_bo, font(11, True), "#258A39")
 
-    # 5. Lớp ổn định
     text_center(draw, (838, 164), lop_on_dinh, font(23, True), "#118DA6")
     if chi_tiet_on_dinh:
-        text_center(
-            draw, (838, 194), chi_tiet_on_dinh, font(10, False), "#333333"
-        )
+        text_center(draw, (838, 194), chi_tiet_on_dinh, font(10, False), "#333333")
 
-    # 6. Lớp cần cố gắng
     text_center(draw, (1010, 164), lop_cuoi, font(23, True), "#D63D20")
-    text_center(
-        draw,
-        (1010, 194),
-        f"{hien_thi_so(diem_cuoi)} điểm",
-        font(11, False),
-        "#333333",
-    )
+    text_center(draw, (1010, 194), f"{hien_thi_so(diem_cuoi)} điểm", font(11, False), "#333333")
 
 
 def ve_bang_xep_hang(img, df, tuan):
     draw = ImageDraw.Draw(img)
 
-    # Tiêu đề bảng
     draw.text(
         (105, 227),
         f"BẢNG XẾP HẠNG TOÀN TRƯỜNG - TUẦN {tuan}",
         font=font(12, True),
-        fill="#FFFFFF",
+        fill="#FFFFFF"
     )
 
     cot_x = [50, 128, 241, 370, 491, 610, 727, 846, 964, 1081]
     tieu_de = [
-        "Hạng",
-        "Lớp",
-        "Khối",
-        "Học tập",
-        "Kỷ luật",
-        "Vệ sinh",
-        "Điểm cộng",
-        "Điểm trừ",
-        "Tổng điểm",
+        "Hạng", "Lớp", "Khối", "Học tập", "Kỷ luật",
+        "Vệ sinh", "Điểm cộng", "Điểm trừ", "Tổng điểm"
     ]
 
     draw.rectangle((50, 252, 1081, 270), fill="#0755B6")
@@ -323,7 +286,7 @@ def ve_bang_xep_hang(img, df, tuan):
             ((x1 + x2) / 2, 260),
             tieu_de[i],
             font(10, True),
-            "#FFFFFF",
+            "#FFFFFF"
         )
         draw.line((x2, 252, x2, 499), fill="#B8CCE2", width=1)
 
@@ -347,7 +310,7 @@ def ve_bang_xep_hang(img, df, tuan):
             row.get("Vệ sinh", 0),
             row.get("Điểm cộng", 0),
             row.get("Điểm trừ", 0),
-            row["Tổng điểm"],
+            row["Tổng điểm"]
         ]
 
         for c, value in enumerate(gia_tri):
@@ -373,7 +336,7 @@ def ve_bang_xep_hang(img, df, tuan):
                 ((x1 + x2) / 2, (y1 + y2) / 2),
                 hien_thi_so(value),
                 font(10, bold),
-                mau,
+                mau
             )
 
 
@@ -391,7 +354,7 @@ def ve_top5(img, df):
             ((cot_x[i] + cot_x[i + 1]) / 2, 546),
             h,
             font(10, True),
-            "#FFFFFF",
+            "#FFFFFF"
         )
 
     y_start = 557
@@ -408,7 +371,7 @@ def ve_top5(img, df):
             row["Hạng"],
             row["Lớp"],
             row.get("Khối", ""),
-            row["Tổng điểm"],
+            row["Tổng điểm"]
         ]
 
         for c, value in enumerate(values):
@@ -418,7 +381,7 @@ def ve_top5(img, df):
                 ((cot_x[c] + cot_x[c + 1]) / 2, (y1 + y2) / 2),
                 hien_thi_so(value),
                 font(11, c in [0, 3]),
-                mau,
+                mau
             )
 
 
@@ -437,20 +400,9 @@ def ve_bieu_do(img, df):
     row_h = 9.6
 
     mau = [
-        "#1559C5",
-        "#1559C5",
-        "#1766CE",
-        "#1D78D8",
-        "#2A93D1",
-        "#39AFC9",
-        "#46B7A7",
-        "#54B98B",
-        "#63BA70",
-        "#73B94F",
-        "#F3C62C",
-        "#F4A527",
-        "#EF7823",
-        "#E63327",
+        "#1559C5", "#1559C5", "#1766CE", "#1D78D8", "#2A93D1",
+        "#39AFC9", "#46B7A7", "#54B98B", "#63BA70", "#73B94F",
+        "#F3C62C", "#F4A527", "#EF7823", "#E63327"
     ]
 
     for i, row in chart.iterrows():
@@ -465,27 +417,24 @@ def ve_bieu_do(img, df):
         draw.rounded_rectangle(
             (x_bar, y - 4, x_bar + bar_w, y + 3),
             radius=2,
-            fill=mau[min(i, len(mau) - 1)],
+            fill=mau[min(i, len(mau) - 1)]
         )
 
         draw.text(
             (x_bar + bar_w + 5, y - 5),
             hien_thi_so(diem),
             font=font(8, True),
-            fill="#202020",
+            fill="#202020"
         )
 
 
 # =========================================================
-# HÀM XUẤT ẢNH HOÀN CHỈNH
+# HÀM XUẤT DASHBOARD
 # =========================================================
-
 
 def tao_anh_dashboard(nam_hoc, tuan, bang):
     if not TEMPLATE_PATH.exists():
-        raise FileNotFoundError(
-            f"Không tìm thấy file template:\n{TEMPLATE_PATH}"
-        )
+        raise FileNotFoundError(f"Không tìm thấy file template:\n{TEMPLATE_PATH}")
 
     df = chuan_hoa_bang(bang)
     if df.empty:
